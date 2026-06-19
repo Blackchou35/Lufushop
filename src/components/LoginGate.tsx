@@ -225,10 +225,30 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onLogin }) => {
               </button>
             </form>
 
-            <div className="bg-brand-primary/5 border border-brand-primary/20 rounded-xl p-3.5 text-[11px] text-text-charcoal/70 leading-relaxed space-y-1">
-              <div className="font-bold flex items-center gap-1">💡 測試提示：</div>
-              <div>• 系統管理者帳號：<strong className="font-mono text-brand-primary">usr_super_admin</strong> / 密碼：<strong className="font-mono text-brand-primary">1234</strong></div>
-              <div>• 一般現場同仁：<strong className="font-mono text-brand-primary">usr_staff</strong> / 密碼：<strong className="font-mono text-brand-primary">1234</strong></div>
+            <div className="bg-brand-primary/5 border border-brand-primary/20 rounded-xl p-3 text-[11px] text-text-charcoal/70 leading-relaxed space-y-2">
+              <div className="font-bold flex items-center gap-1 text-xs">💡 測試快速登入：</div>
+              <div className="grid grid-cols-1 gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername('usr_super_admin');
+                    setPassword('1234');
+                  }}
+                  className="w-full bg-brand-primary/10 border border-brand-primary/30 text-brand-primary font-bold py-1.5 px-3 rounded-lg text-[10px] hover:bg-brand-primary hover:text-canvas-bg transition-all text-center cursor-pointer"
+                >
+                  ⚡ 一鍵帶入：最高管理者 (usr_super_admin)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername('usr_staff');
+                    setPassword('1234');
+                  }}
+                  className="w-full bg-brand-camel/15 border border-brand-camel/30 text-text-charcoal font-bold py-1.5 px-3 rounded-lg text-[10px] hover:bg-brand-camel hover:text-canvas-bg transition-all text-center cursor-pointer"
+                >
+                  ⚡ 一鍵帶入：現場員工 (usr_staff)
+                </button>
+              </div>
             </div>
           </div>
         )}
