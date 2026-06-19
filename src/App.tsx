@@ -15,6 +15,23 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [refreshKey, setRefreshKey] = useState(0); // 用於切換角色時刷新全局視窗數據
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // 啟動時自動從雲端載入並同步本地資料庫
+  useEffect(() => {
+    const initCloudDb = async () => {
+      try {
+        const { loadDbFromCloud } = await import('./lib/db');
+        const cloudDb = await loadDbFromCloud();
+        if (cloudDb) {
+          setCurrentUser(getCurrentUser());
+          setRefreshKey(prev => prev + 1);
+        }
+      } catch (e) {
+        console.error('背景自動載入雲端資料庫失敗：', e);
+      }
+    };
+    initCloudDb();
+  }, []);
   
   // 管理登入狀態：若 localStorage 中沒有紀錄，則初始為 null
   const [currentUser, setCurrentUser] = useState(() => {

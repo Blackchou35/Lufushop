@@ -1,7 +1,8 @@
 // 寵物凍乾與寄賣 ERP - 系統參數設定、手動盤點調整與操作日誌稽核頁面 (含一鍵測試控制台)
 import React, { useState, useEffect } from 'react';
 import { dbService } from '../services/dbService';
-import { getDb, getCurrentUser, saveDb } from '../lib/db';
+import { getDb, getCurrentUser, saveDb, syncDbWithCloud, loadDbFromCloud } from '../lib/db';
+import { getSupabaseConfig, saveSupabaseConfig } from '../lib/supabase';
 import { SystemConfig, Profile, Warehouse, WarehouseStock, InventoryAdjustment, AuditLog, Material, Product, BomRecipe } from '../types/erp';
 import { TestConsole } from '../components/TestConsole';
 import { translateChineseName } from '../utils/idTranslator';
@@ -55,6 +56,10 @@ export const SettingsAndAuditing: React.FC = () => {
   const [redDays, setRedDays] = useState('30');
   const [stockMultiplier, setStockMultiplier] = useState('1.0');
   const [loginPasscode, setLoginPasscode] = useState('1234');
+  
+  // Supabase 雲端同步設定狀態
+  const [supabaseConfig, setSupabaseConfig] = useState(() => getSupabaseConfig());
+  const [isTestingCloud, setIsTestingCloud] = useState(false);
 
   // 自動測試控制台收摺
   const [isTestConsoleOpen, setIsTestConsoleOpen] = useState(false);
@@ -411,6 +416,57 @@ export const SettingsAndAuditing: React.FC = () => {
       loadData();
     } catch (err: any) {
       setNotification({ type: 'error', message: err.message });
+    }
+  };
+
+  // --- Supabase 雲端資料庫同步處理器 ---
+  const handleSaveSupabaseConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      saveSupabaseConfig(supabaseConfig);
+      setNotification({ type: 'success', message: '已成功儲存 Supabase 雲端設定！' });
+      // 如果啟用了自動同步，立刻嘗試將目前的本地資料備份上傳一次，作為雲端資料庫初始化
+      if (supabaseConfig.autoSync && supabaseConfig.url && supabaseConfig.anonKey) {
+        syncDbWithCloud(getDb())
+          .then(() => setNotification({ type: 'success', message: '已成功儲存並同步初始資料至雲端！' }))
+          .catch(err => setNotification({ type: 'error', message: `儲存成功但雲端同步失敗: ${err.message}` }));
+      }
+    } catch (err: any) {
+      setNotification({ type: 'error', message: `設定失敗: ${err.message}` });
+    }
+  };
+
+  const handleManualUploadToCloud = async () => {
+    setIsTestingCloud(true);
+    try {
+      await syncDbWithCloud(getDb());
+      setNotification({ type: 'success', message: '已手動將本地資料庫完全上傳至 Supabase 雲端！' });
+    } catch (err: any) {
+      setNotification({ type: 'error', message: `上傳雲端失敗: ${err.message}` });
+    } finally {
+      setIsTestingCloud(false);
+    }
+  };
+
+  const handleManualDownloadFromCloud = async () => {
+    if (!confirm('⚠️ 警告：從雲端載入資料庫將會完全「覆蓋並清除」您這台設備目前的本地資料！確定要繼續嗎？')) {
+      return;
+    }
+    setIsTestingCloud(true);
+    try {
+      const cloudDb = await loadDbFromCloud();
+      if (cloudDb) {
+        setNotification({ type: 'success', message: '已成功從 Supabase 下載並還原最新資料庫！系統即將在 1.5 秒後重新載入...' });
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        setNotification({ type: 'error', message: '從雲端載入失敗，請確認您的雲端資料庫已有資料且連線金鑰正確。' });
+      }
+    } catch (err: any) {
+      setNotification({ type: 'error', message: `從雲端下載失敗: ${err.message}` });
+    } finally {
+      setIsTestingCloud(false);
     }
   };
 
@@ -782,6 +838,105 @@ export const SettingsAndAuditing: React.FC = () => {
               </button>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Supabase 雲端資料庫同步設定面板 */}
+      <div className="bg-canvas-alt p-5 rounded-2xl border border-brand-camel/40 shadow-sm space-y-4 text-xs">
+        <h3 className="text-sm font-bold text-text-charcoal flex items-center gap-2">
+          <Database className="w-4.5 h-4.5 text-brand-primary" />
+          🌐 Supabase 雲端即時同步設定
+        </h3>
+        <p className="text-xs text-text-charcoal/70 leading-relaxed">
+          輸入您的 Supabase 連線資訊以將這台設備的資料與雲端自動同步，實現電腦與手機/iPad 的跨裝置資料雙向連線。
+        </p>
+
+        <form onSubmit={handleSaveSupabaseConfig} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-semibold mb-1 text-text-charcoal/70">1. Supabase Project URL</label>
+              <input
+                type="text"
+                placeholder="例如: https://xxxxxx.supabase.co"
+                value={supabaseConfig.url}
+                onChange={(e) => setSupabaseConfig({ ...supabaseConfig, url: e.target.value.trim() })}
+                className="w-full bg-canvas-bg border border-brand-camel rounded-lg px-2.5 py-2 text-text-charcoal font-mono"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold mb-1 text-text-charcoal/70">2. Supabase Anon Key (公用金鑰)</label>
+              <input
+                type="password"
+                placeholder="請貼上 anon public 金鑰..."
+                value={supabaseConfig.anonKey}
+                onChange={(e) => setSupabaseConfig({ ...supabaseConfig, anonKey: e.target.value.trim() })}
+                className="w-full bg-canvas-bg border border-brand-camel rounded-lg px-2.5 py-2 text-text-charcoal font-mono tracking-widest text-center"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 bg-canvas-bg p-3.5 rounded-xl border border-brand-camel/30 max-w-fit">
+            <input
+              type="checkbox"
+              id="chkAutoSync"
+              checked={supabaseConfig.autoSync}
+              onChange={(e) => setSupabaseConfig({ ...supabaseConfig, autoSync: e.target.checked })}
+              className="w-4 h-4 cursor-pointer accent-brand-primary"
+            />
+            <label htmlFor="chkAutoSync" className="font-semibold text-text-charcoal/80 cursor-pointer select-none">
+              開啟「自動即時雲端同步」(每次修改資料將自動寫入雲端，開機自動下載更新)
+            </label>
+          </div>
+
+          <div className="flex flex-wrap gap-3.5 pt-2">
+            <button
+              type="submit"
+              className="bg-brand-primary text-canvas-bg font-bold py-2.5 px-4 rounded-xl hover:opacity-90 transition-opacity shadow-sm"
+            >
+              💾 儲存並連接雲端
+            </button>
+
+            {supabaseConfig.url && supabaseConfig.anonKey && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleManualUploadToCloud}
+                  disabled={isTestingCloud}
+                  className="bg-brand-primary/10 border border-brand-primary/30 text-brand-primary font-bold py-2.5 px-4 rounded-xl hover:bg-brand-primary/20 transition-colors shadow-sm disabled:opacity-50"
+                >
+                  {isTestingCloud ? '同步中...' : '📤 手動上傳：將本地覆蓋至雲端'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleManualDownloadFromCloud}
+                  disabled={isTestingCloud}
+                  className="bg-brand-camel/20 border border-brand-camel/40 text-text-charcoal font-bold py-2.5 px-4 rounded-xl hover:bg-brand-camel/30 transition-colors shadow-sm disabled:opacity-50"
+                >
+                  {isTestingCloud ? '載入中...' : '📥 手動下載：將雲端覆蓋至本地'}
+                </button>
+              </>
+            )}
+          </div>
+        </form>
+
+        <div className="bg-brand-primary/5 border border-brand-primary/15 rounded-xl p-4 leading-relaxed space-y-2 mt-4 text-[11px] text-text-charcoal/70 text-left">
+          <div className="font-bold text-text-charcoal text-xs">💡 首次建立 Supabase 指南 (SQL Editor 語法)</div>
+          <div>在您建立好 Supabase 專案後，請前往左側選單的 **SQL Editor** ➔ 貼上並執行 (Run) 以下 SQL 語句建立資料表，系統才能正常連線：</div>
+          <pre className="bg-canvas-bg p-3 rounded-lg border border-brand-camel/30 text-[10px] text-brand-primary font-mono overflow-x-auto max-h-40 text-left select-all cursor-pointer" title="點擊三下可全選">
+{`create table erp_sync_store (
+  id integer primary key default 1,
+  db_json jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+insert into erp_sync_store (id, db_json) 
+values (1, '{"profiles":[], "materials":[], "products":[], "bom_recipes":[], "inventory_batches":[], "warehouses":[], "warehouse_stocks":[], "sales_orders":[], "sales_order_items":[], "system_configs":[], "inventory_adjustments":[], "audit_logs":[]}')
+on conflict (id) do nothing;
+
+alter table erp_sync_store enable row level security;
+create policy "Allow public read and write" on erp_sync_store for all using (true) with check (true);`}
+          </pre>
         </div>
       </div>
 

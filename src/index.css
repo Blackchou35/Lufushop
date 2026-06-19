@@ -33,19 +33,22 @@
 }
 
 /* 響應式根字體大小控制，配合各種解析度自動調節整體 UI 大小 */
+/* 手機/小螢幕端：基準字體放大為 20px */
 html {
-  font-size: 14px; /* 手機/小螢幕 */
+  font-size: 20px; 
 }
 
-@media (min-width: 768px) {
+/* iPad/平板端：基準字體放大為 18px */
+@media (min-width: 768px) and (max-width: 1024px) {
   html {
-    font-size: 15px; /* 平板/中螢幕 (如 iPad) */
+    font-size: 18px; 
   }
 }
 
-@media (min-width: 1280px) {
+/* 電腦/大螢幕端：基準字體設定為 16px */
+@media (min-width: 1024px) {
   html {
-    font-size: 16px; /* 電腦/大螢幕 (如 Windows/Mac) */
+    font-size: 16px; 
   }
 }
 
@@ -53,25 +56,25 @@ body {
   background-color: var(--color-canvas-bg);
   color: var(--color-text-charcoal);
   font-family: var(--font-sans);
-  font-size: 14px; /* 預設文字設為 14px */
+  font-size: 1rem; /* 使用相對單位以配合根字體自動放大 */
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 全局安全文字大小保護：將所有極小字體 (如原本為了排版塞入的 8px~10px) 強制升至 12px-13px */
+/* 全局安全文字大小保護：將原本為了排版塞入的極小字體，在全平台全面放大，防範視覺吃力 */
 .text-\[8px\] {
-  font-size: 12px !important;
+  font-size: 0.75rem !important;
 }
 .text-\[9px\] {
-  font-size: 12px !important;
+  font-size: 0.75rem !important;
 }
 .text-\[10px\] {
-  font-size: 13px !important;
+  font-size: 0.8rem !important;
 }
 .text-\[11px\] {
-  font-size: 13px !important;
+  font-size: 0.85rem !important;
 }
 
 /* 捲軸美化 (搭配暖色調) */

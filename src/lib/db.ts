@@ -6,6 +6,8 @@ import {
   ProcessingJob
 } from '../types/erp';
 
+import { getSupabase, getSupabaseConfig } from './supabase';
+
 interface ErpDatabase {
   profiles: Profile[];
   materials: Material[];
@@ -257,9 +259,75 @@ export const getDb = (): ErpDatabase => {
   }
 };
 
+// 非同步將本地資料庫同步至 Supabase 雲端
+export const syncDbWithCloud = async (db: ErpDatabase): Promise<void> => {
+  const supabase = getSupabase();
+  const config = getSupabaseConfig();
+  if (!supabase || !config.autoSync) return;
+
+  try {
+    const timestamp = new Date().toISOString();
+    const { error } = await supabase
+      .from('erp_sync_store')
+      .upsert({
+        id: 1,
+        db_json: db,
+        updated_at: timestamp
+      }, { onConflict: 'id' });
+
+    if (error) {
+      console.error('Supabase 雲端資料同步失敗：', error);
+    } else {
+      console.log('資料已成功即時同步至雲端 Supabase 資料表。時間：', timestamp);
+    }
+  } catch (e) {
+    console.error('Supabase 雲端同步連線異常：', e);
+  }
+};
+
+// 從 Supabase 下載最新雲端資料庫並覆蓋本地
+export const loadDbFromCloud = async (): Promise<ErpDatabase | null> => {
+  const supabase = getSupabase();
+  const config = getSupabaseConfig();
+  if (!supabase || !config.autoSync) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('erp_sync_store')
+      .select('db_json, updated_at')
+      .eq('id', 1)
+      .single();
+
+    if (error) {
+      console.error('自雲端 Supabase 下載資料庫失敗：', error);
+      return null;
+    }
+
+    if (data && data.db_json) {
+      const parsedDb = data.db_json as ErpDatabase;
+      const requiredKeys = ['profiles', 'materials', 'products', 'bom_recipes', 'inventory_batches', 'warehouses', 'warehouse_stocks', 'sales_orders', 'sales_order_items', 'system_configs', 'inventory_adjustments', 'audit_logs'];
+      const hasAllKeys = requiredKeys.every(k => k in parsedDb);
+      if (hasAllKeys) {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(parsedDb));
+        console.log('已自動從雲端 Supabase 資料庫更新本地資料，最後同步時間：', data.updated_at);
+        return parsedDb;
+      }
+    }
+  } catch (e) {
+    console.error('自雲端 Supabase 連線下載異常：', e);
+  }
+  return null;
+};
+
 // 儲存資料庫
 export const saveDb = (db: ErpDatabase): void => {
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(db));
+  
+  // 非同步觸發雲端同步，避免阻礙 UI
+  const config = getSupabaseConfig();
+  if (config.autoSync) {
+    syncDbWithCloud(db).catch(err => console.error('背景雲端自動同步失敗：', err));
+  }
 };
 
 // 取得目前模擬登入之使用者

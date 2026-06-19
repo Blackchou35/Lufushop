@@ -452,7 +452,7 @@ export const PricingSimulator: React.FC = () => {
           return (
             <div 
               key={wh.warehouse_id} 
-              className={`bg-canvas-alt p-5 rounded-2xl border shadow-sm transition-all flex flex-col justify-between h-auto min-h-[460px] ${
+              className={`bg-canvas-alt p-5 rounded-2xl border shadow-sm transition-all flex flex-col justify-between h-auto min-h-[30rem] ${
                 isUnderBreakeven 
                   ? 'border-brand-accent/60 ring-1 ring-brand-accent/20 bg-brand-accent/5' 
                   : 'border-brand-camel/40 hover:border-brand-primary'
@@ -611,7 +611,7 @@ export const PricingSimulator: React.FC = () => {
               setNewWh({ warehouse_id: '', name: '', type: 'CONSIGNMENT', fee_type: 'NONE', fee_value: 0 });
               setIsAddingWh(true);
             }}
-            className="bg-canvas-alt/50 p-5 rounded-2xl border-2 border-dashed border-brand-camel/50 hover:border-brand-primary hover:bg-canvas-alt transition-all flex flex-col justify-center items-center h-auto min-h-[460px] text-text-charcoal/50 hover:text-brand-primary group gap-3"
+            className="bg-canvas-alt/50 p-5 rounded-2xl border-2 border-dashed border-brand-camel/50 hover:border-brand-primary hover:bg-canvas-alt transition-all flex flex-col justify-center items-center h-auto min-h-[30rem] text-text-charcoal/50 hover:text-brand-primary group gap-3"
           >
             <div className="w-12 h-12 rounded-full border-2 border-dashed border-brand-camel/70 group-hover:border-brand-primary flex items-center justify-center transition-colors">
               <Plus className="w-6 h-6 text-brand-camel group-hover:text-brand-primary transition-colors" />
