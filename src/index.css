@@ -1,0 +1,145 @@
+/* 導入 Noto Sans TC (思源黑體) 中文字型 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  /* 品牌明亮溫潤暖色系調色盤 */
+  --color-canvas-bg: #FDFBF7;        /* 畫布主背景：極柔和柔白 */
+  --color-canvas-alt: #F9F6F0;       /* 次要背景：燕麥奶色 */
+  --color-brand-primary: #7A8B7B;    /* 品牌主調色：鼠尾草綠 */
+  --color-brand-camel: #C2A68E;      /* 品牌副色：暖駝色 */
+  --color-brand-accent: #E89A7B;     /* 點綴提示色：柔和珊瑚橘 */
+  --color-text-charcoal: #2C2520;    /* 字體顏色：優雅深炭棕色 */
+  
+  /* 其他狀態輔助色 (均調為暖和明亮色調，不刺眼) */
+  --color-warm-red: #E07A5F;         /* 警告/高危：紅橘色 */
+  --color-warm-yellow: #F4A261;      /* 中危/提醒：落日黃 */
+  --color-warm-green: #81B29A;       /* 安全/成功：薄荷綠 */
+  --color-warm-blue: #A8DADC;        /* 資訊提示：粉藍色 */
+
+  /* 字體系統 */
+  --font-sans: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+  
+  /* 圓角系統：採用大圓角設計以維持親和力 */
+  --radius-2xl: 16px;
+  --radius-xl: 12px;
+  --radius-lg: 8px;
+}
+
+/* 絕對視覺禁令：禁止深色模式，全站預設明亮暖色系 */
+:root {
+  color-scheme: light;
+}
+
+/* 響應式根字體大小控制，配合各種解析度自動調節整體 UI 大小 */
+html {
+  font-size: 14px; /* 手機/小螢幕 */
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 15px; /* 平板/中螢幕 (如 iPad) */
+  }
+}
+
+@media (min-width: 1280px) {
+  html {
+    font-size: 16px; /* 電腦/大螢幕 (如 Windows/Mac) */
+  }
+}
+
+body {
+  background-color: var(--color-canvas-bg);
+  color: var(--color-text-charcoal);
+  font-family: var(--font-sans);
+  font-size: 14px; /* 預設文字設為 14px */
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 全局安全文字大小保護：將所有極小字體 (如原本為了排版塞入的 8px~10px) 強制升至 12px-13px */
+.text-\[8px\] {
+  font-size: 12px !important;
+}
+.text-\[9px\] {
+  font-size: 12px !important;
+}
+.text-\[10px\] {
+  font-size: 13px !important;
+}
+.text-\[11px\] {
+  font-size: 13px !important;
+}
+
+/* 捲軸美化 (搭配暖色調) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-canvas-alt);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-brand-camel);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-primary);
+}
+
+/* HTML2PDF 或 A4 列印樣式 */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  .print-page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 15mm 20mm;
+    margin: 0 auto;
+    background: #ffffff;
+    box-shadow: none;
+    box-sizing: border-box;
+    page-break-after: always;
+  }
+  
+  .print-title {
+    font-size: 24pt;
+    font-weight: bold;
+    color: #2c2520;
+    text-align: center;
+    margin-bottom: 20pt;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15pt;
+  }
+
+  .print-table th, 
+  .print-table td {
+    border: 1px solid #c2a68e;
+    padding: 8pt 10pt;
+    text-align: left;
+    font-size: 10.5pt;
+  }
+
+  .print-table th {
+    background-color: #f9f6f0 !important;
+    font-weight: bold;
+  }
+}
