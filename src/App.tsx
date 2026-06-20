@@ -16,8 +16,34 @@ export const App: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0); // 用於切換角色時刷新全局視窗數據
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  // 啟動時自動從雲端載入並同步本地資料庫
+  // 啟動時自動從雲端載入並同步本地資料庫，並且解析快捷分享連結
   useEffect(() => {
+    const parseUrlConfig = () => {
+      const params = new URLSearchParams(window.location.search);
+      const url = params.get('sb_url');
+      const key = params.get('sb_key');
+      if (url && key) {
+        try {
+          const config = {
+            url: decodeURIComponent(url),
+            anonKey: decodeURIComponent(key),
+            autoSync: true
+          };
+          localStorage.setItem('pet_freeze_dried_erp_supabase_config', JSON.stringify(config));
+          alert('✨ 已成功透過快速同步連結設定 Supabase 雲端資料庫！系統將自動載入雲端資料並重新整理...');
+          // 清除網址列參數，避免重複提示
+          window.history.replaceState({}, document.title, window.location.pathname);
+          window.location.reload();
+          return true;
+        } catch (err) {
+          console.error('解析快速同步連結失敗', err);
+        }
+      }
+      return false;
+    };
+
+    if (parseUrlConfig()) return;
+
     const initCloudDb = async () => {
       try {
         const { loadDbFromCloud } = await import('./lib/db');

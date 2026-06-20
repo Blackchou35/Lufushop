@@ -422,17 +422,64 @@ export const SettingsAndAuditing: React.FC = () => {
   // --- Supabase 雲端資料庫同步處理器 ---
   const handleSaveSupabaseConfig = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabaseConfig.url || !supabaseConfig.anonKey) {
+      alert('⚠️ 請先填寫 Supabase URL 與 Anon Key！');
+      return;
+    }
     try {
       saveSupabaseConfig(supabaseConfig);
       setNotification({ type: 'success', message: '已成功儲存 Supabase 雲端設定！' });
+      alert('💾 已成功儲存 Supabase 雲端連線設定！');
+      
       // 如果啟用了自動同步，立刻嘗試將目前的本地資料備份上傳一次，作為雲端資料庫初始化
-      if (supabaseConfig.autoSync && supabaseConfig.url && supabaseConfig.anonKey) {
+      if (supabaseConfig.autoSync) {
         syncDbWithCloud(getDb())
-          .then(() => setNotification({ type: 'success', message: '已成功儲存並同步初始資料至雲端！' }))
-          .catch(err => setNotification({ type: 'error', message: `儲存成功但雲端同步失敗: ${err.message}` }));
+          .then(() => {
+            setNotification({ type: 'success', message: '已成功儲存並同步初始資料至雲端！' });
+            alert('📤 雲端資料初始化上傳成功！');
+          })
+          .catch(err => {
+            setNotification({ type: 'error', message: `儲存成功但雲端同步失敗: ${err.message}` });
+            alert(`⚠️ 儲存成功，但與雲端同步時失敗：\n${err.message}\n請確認您 Supabase 的 RLS 政策與 SQL 語法是否有正確執行。`);
+          });
       }
     } catch (err: any) {
       setNotification({ type: 'error', message: `設定失敗: ${err.message}` });
+      alert(`❌ 設定失敗: ${err.message}`);
+    }
+  };
+
+  const handleCopySyncLink = () => {
+    if (!supabaseConfig.url || !supabaseConfig.anonKey) {
+      alert('⚠️ 請先填寫完整的 Supabase URL 與 Anon Key 才能複製分享連結！');
+      return;
+    }
+    try {
+      const shareUrl = `${window.location.origin}${window.location.pathname}?sb_url=${encodeURIComponent(supabaseConfig.url)}&sb_key=${encodeURIComponent(supabaseConfig.anonKey)}`;
+      
+      // 複製到剪貼簿
+      navigator.clipboard.writeText(shareUrl)
+        .then(() => {
+          alert('🔗 已成功複製快速同步連結！\n\n您可以將此連結透過 LINE / WeChat 或 AirDrop 傳送到手機或 iPad 開啟，即可一秒完成設定！');
+        })
+        .catch(() => {
+          // 備用複製方式，如果 navigator.clipboard 被阻擋
+          const textArea = document.createElement("textarea");
+          textArea.value = shareUrl;
+          textArea.style.position = "fixed";
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          try {
+            document.execCommand('copy');
+            alert('🔗 已成功複製快速同步連結 (備用通道)！\n\n您可以將此連結透過 LINE / WeChat 或 AirDrop 傳送到手機或 iPad 開啟，即可一秒完成設定！');
+          } catch (err) {
+            alert('複製連結失敗，請手動複製網址列。');
+          }
+          document.body.removeChild(textArea);
+        });
+    } catch (e: any) {
+      alert(`複製失敗: ${e.message}`);
     }
   };
 
@@ -441,30 +488,33 @@ export const SettingsAndAuditing: React.FC = () => {
     try {
       await syncDbWithCloud(getDb());
       setNotification({ type: 'success', message: '已手動將本地資料庫完全上傳至 Supabase 雲端！' });
+      alert('📤 成功手動將本地資料上傳至 Supabase 雲端資料庫！');
     } catch (err: any) {
       setNotification({ type: 'error', message: `上傳雲端失敗: ${err.message}` });
+      alert(`❌ 上傳雲端失敗：\n${err.message}`);
     } finally {
       setIsTestingCloud(false);
     }
   };
 
   const handleManualDownloadFromCloud = async () => {
-    if (!confirm('⚠️ 警告：從雲端載入資料庫將會完全「覆蓋並清除」您這台設備目前的本地資料！確定要繼續嗎？')) {
+    if (!confirm('⚠️ 警告：從雲端載入資料庫將會完全「覆蓋並清除」您這台設備目前的本地資料！\n\n確定要繼續嗎？')) {
       return;
     }
     setIsTestingCloud(true);
     try {
       const cloudDb = await loadDbFromCloud();
       if (cloudDb) {
-        setNotification({ type: 'success', message: '已成功從 Supabase 下載並還原最新資料庫！系統即將在 1.5 秒後重新載入...' });
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+        setNotification({ type: 'success', message: '已成功從 Supabase 下載並還原最新資料庫！系統即將重新載入...' });
+        alert('📥 已成功從雲端下載最新資料庫！系統將自動重新載入網頁...');
+        window.location.reload();
       } else {
         setNotification({ type: 'error', message: '從雲端載入失敗，請確認您的雲端資料庫已有資料且連線金鑰正確。' });
+        alert('❌ 從雲端載入失敗！\n\n請確認您的雲端資料庫中已經有先前上傳的資料，且 Project URL 與 Anon Key 是正確的。');
       }
     } catch (err: any) {
       setNotification({ type: 'error', message: `從雲端下載失敗: ${err.message}` });
+      alert(`❌ 從雲端下載失敗：\n${err.message}`);
     } finally {
       setIsTestingCloud(false);
     }
@@ -914,6 +964,14 @@ export const SettingsAndAuditing: React.FC = () => {
                   className="bg-brand-camel/20 border border-brand-camel/40 text-text-charcoal font-bold py-2.5 px-4 rounded-xl hover:bg-brand-camel/30 transition-colors shadow-sm disabled:opacity-50"
                 >
                   {isTestingCloud ? '載入中...' : '📥 手動下載：將雲端覆蓋至本地'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopySyncLink}
+                  className="bg-brand-camel text-canvas-bg font-bold py-2.5 px-4 rounded-xl hover:opacity-90 transition-opacity shadow-sm"
+                >
+                  🔗 複製手機/iPad 快速同步連結
                 </button>
               </>
             )}
