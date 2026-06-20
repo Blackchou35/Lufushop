@@ -55,7 +55,7 @@ export const App: React.FC = () => {
 
   // 啟動時自動從雲端載入並同步本地資料庫，並且解析快捷分享連結
   useEffect(() => {
-    const parseUrlConfig = () => {
+    const parseUrlConfig = async () => {
       const params = new URLSearchParams(window.location.search);
       const url = params.get('sb_url');
       const key = params.get('sb_key');
@@ -67,19 +67,29 @@ export const App: React.FC = () => {
             autoSync: true
           };
           localStorage.setItem('pet_freeze_dried_erp_supabase_config', JSON.stringify(config));
-          alert('✨ 已成功透過快速同步連結設定 Supabase 雲端資料庫！系統將自動載入雲端資料並重新整理...');
+          
+          // 在重新整理前，立刻強制先進行一次雲端資料下載，確保新帳密能被下載到手機上
+          const { loadDbFromCloud } = await import('./lib/db');
+          const cloudDb = await loadDbFromCloud();
+          
+          if (cloudDb) {
+            alert('✨ 連線成功！已順利從雲端下載最新帳密與營運資料！\n\n系統將自動重新整理，您現在可以使用最新的帳號登入了！');
+          } else {
+            alert('⚠️ 雲端設定儲存成功，但嘗試下載資料失敗！\n\n這代表您的雲端資料庫目前是空的。請先在電腦端設定好，並點選【📤 手動上傳：將本地覆蓋至雲端】把電腦的資料同步上去，手機才能下載得到喔！');
+          }
+          
           // 清除網址列參數，避免重複提示
           window.history.replaceState({}, document.title, window.location.pathname);
           window.location.reload();
           return true;
-        } catch (err) {
-          console.error('解析快速同步連結失敗', err);
+        } catch (err: any) {
+          alert(`❌ 解析快速同步連結失敗: ${err.message}`);
         }
       }
       return false;
     };
 
-    if (parseUrlConfig()) return;
+    parseUrlConfig();
 
     const initCloudDb = async () => {
       try {
@@ -296,7 +306,7 @@ export const App: React.FC = () => {
         )}
 
         {/* 核心工作畫布 */}
-        <main className={`flex-1 overflow-y-auto print:p-0 ${deviceType === 'mobile' ? 'p-4' : 'p-6'}`}>
+        <main className={`flex-1 overflow-y-auto print:p-0 ${deviceType === 'mobile' ? 'p-4 pb-28' : 'p-6'}`}>
           <div className="max-w-6.5xl mx-auto print:max-w-none">
             {renderActiveView()}
           </div>
