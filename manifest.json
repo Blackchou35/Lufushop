@@ -1,0 +1,18 @@
+{
+  "name": "露福簡單商店 ERP 系統",
+  "short_name": "露福 ERP",
+  "description": "寵物凍乾與寄賣 ERP 管理系統",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FAF8F5",
+  "theme_color": "#8C9D86",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
