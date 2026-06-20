@@ -141,7 +141,9 @@ const INITIAL_DATABASE: ErpDatabase = {
     { config_key: 'ALERT_EXPIRY_YELLOW', config_value: '60', description: '效期黃燈警示天數 (低於此天數顯示黃色)', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' },
     { config_key: 'ALERT_EXPIRY_RED', config_value: '30', description: '效期紅燈警示天數 (低於此天數顯示紅色)', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' },
     { config_key: 'LOGIN_PASSCODE', config_value: '1234', description: '系統登入門戶安全驗證密碼', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' },
-    { config_key: 'STOCK_MULTIPLIER', config_value: '1.0', description: '安全庫存水位全局放大倍率係數', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' }
+    { config_key: 'STOCK_MULTIPLIER', config_value: '1.0', description: '安全庫存水位全局放大倍率係數', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' },
+    { config_key: 'SYSTEM_TITLE', config_value: 'Aether ERP', description: '系統中/英文名稱', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' },
+    { config_key: 'SYSTEM_SUBTITLE', config_value: '露福簡單商店系統', description: '系統副標題', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' }
   ],
   inventory_adjustments: [],
   audit_logs: [
@@ -387,10 +389,16 @@ export const saveDb = (db: ErpDatabase): void => {
       clearTimeout(syncTimeoutId);
     }
     syncTimeoutId = setTimeout(() => {
+      syncTimeoutId = null;
       console.log('⏳ 偵測到操作停止，開始執行背景防抖雲端同步...');
       syncDbWithCloud(db).catch(err => console.error('背景雲端自動同步失敗：', err));
     }, 2500);
   }
+};
+
+// 檢查當前是否有同步在執行或排程中，用以防止使用者關閉網頁造成資料遺失
+export const isDbSyncing = (): boolean => {
+  return isSyncing || hasPendingSync || syncTimeoutId !== null;
 };
 
 // 取得目前模擬登入之使用者
@@ -526,7 +534,9 @@ const CLEAN_DATABASE: ErpDatabase = {
     { config_key: 'ALERT_EXPIRY_YELLOW', config_value: '60', description: '效期黃燈警示天數 (低於此天數顯示黃色)', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' },
     { config_key: 'ALERT_EXPIRY_RED', config_value: '30', description: '效期紅燈警示天數 (低於此天數顯示紅色)', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' },
     { config_key: 'LOGIN_PASSCODE', config_value: '1234', description: '系統登入門戶安全驗證密碼', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' },
-    { config_key: 'STOCK_MULTIPLIER', config_value: '1.0', description: '安全庫存水位全局放大倍率係數', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' }
+    { config_key: 'STOCK_MULTIPLIER', config_value: '1.0', description: '安全庫存水位全局放大倍率係數', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' },
+    { config_key: 'SYSTEM_TITLE', config_value: 'Aether ERP', description: '系統中/英文名稱', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' },
+    { config_key: 'SYSTEM_SUBTITLE', config_value: '露福簡單商店系統', description: '系統副標題', updated_at: new Date().toISOString(), updated_by: 'usr_super_admin' }
   ],
   inventory_adjustments: [],
   audit_logs: [

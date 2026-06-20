@@ -56,6 +56,8 @@ export const SettingsAndAuditing: React.FC = () => {
   const [redDays, setRedDays] = useState('30');
   const [stockMultiplier, setStockMultiplier] = useState('1.0');
   const [loginPasscode, setLoginPasscode] = useState('1234');
+  const [systemTitle, setSystemTitle] = useState('Aether ERP');
+  const [systemSubtitle, setSystemSubtitle] = useState('露福簡單商店系統');
   
   // Supabase 雲端同步設定狀態
   const [supabaseConfig, setSupabaseConfig] = useState(() => getSupabaseConfig());
@@ -97,11 +99,15 @@ export const SettingsAndAuditing: React.FC = () => {
     const rd = cfgs.find(c => c.config_key === 'ALERT_EXPIRY_RED')?.config_value || '30';
     const sm = cfgs.find(c => c.config_key === 'STOCK_MULTIPLIER')?.config_value || '1.0';
     const lp = cfgs.find(c => c.config_key === 'LOGIN_PASSCODE')?.config_value || '1234';
+    const st = cfgs.find(c => c.config_key === 'SYSTEM_TITLE')?.config_value || 'Aether ERP';
+    const ss = cfgs.find(c => c.config_key === 'SYSTEM_SUBTITLE')?.config_value || '露福簡單商店系統';
     setTaxRate(tr);
     setYellowDays(yd);
     setRedDays(rd);
     setStockMultiplier(sm);
     setLoginPasscode(lp);
+    setSystemTitle(st);
+    setSystemSubtitle(ss);
 
     setProfiles(getDb().profiles);
     setWarehouses(dbService.getWarehouses());
@@ -126,12 +132,17 @@ export const SettingsAndAuditing: React.FC = () => {
       dbService.updateConfig('ALERT_EXPIRY_YELLOW', yellowDays);
       dbService.updateConfig('ALERT_EXPIRY_RED', redDays);
       dbService.updateConfig('STOCK_MULTIPLIER', stockMultiplier);
+      dbService.updateConfig('SYSTEM_TITLE', systemTitle);
+      dbService.updateConfig('SYSTEM_SUBTITLE', systemSubtitle);
       if (user.role === 'SUPER_ADMIN') {
         dbService.updateConfig('LOGIN_PASSCODE', loginPasscode);
       }
       
-      setNotification({ type: 'success', message: '系統全局參數配置保存成功！已寫入操作稽核日誌。' });
+      setNotification({ type: 'success', message: '系統配置保存成功！網頁即將重新整理以套用新的名稱。' });
       loadData();
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (err: any) {
       setNotification({ type: 'error', message: err.message });
     }
@@ -780,6 +791,30 @@ export const SettingsAndAuditing: React.FC = () => {
                   value={redDays}
                   onChange={(e) => setRedDays(e.target.value)}
                   className="w-full bg-canvas-bg border border-brand-camel rounded-lg px-2.5 py-2 text-text-charcoal font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold mb-1 text-text-charcoal/75">系統中/英文名稱 (如 Aether ERP)</label>
+                <input
+                  type="text"
+                  value={systemTitle}
+                  onChange={(e) => setSystemTitle(e.target.value)}
+                  className="w-full bg-canvas-bg border border-brand-camel rounded-lg px-2.5 py-2 text-text-charcoal font-bold"
+                  placeholder="Aether ERP"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1 text-text-charcoal/75">系統副標題 (如 露福簡單商店系統)</label>
+                <input
+                  type="text"
+                  value={systemSubtitle}
+                  onChange={(e) => setSystemSubtitle(e.target.value)}
+                  className="w-full bg-canvas-bg border border-brand-camel rounded-lg px-2.5 py-2 text-text-charcoal font-medium"
+                  placeholder="露福簡單商店系統"
                 />
               </div>
             </div>

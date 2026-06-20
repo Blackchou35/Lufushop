@@ -8,13 +8,24 @@ import { PricingSimulator } from './views/PricingSimulator';
 import { WarehouseManager } from './views/WarehouseManager';
 import { ConsignmentReconciliation } from './views/ConsignmentReconciliation';
 import { SettingsAndAuditing } from './views/SettingsAndAuditing';
-import { getCurrentUser } from './lib/db';
+import { getCurrentUser, getDb, isDbSyncing } from './lib/db';
 import { ShieldAlert, Menu, X, Calendar, LayoutDashboard, Hammer, Package, ClipboardCheck, Settings } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [refreshKey, setRefreshKey] = useState(0); // 用於切換角色時刷新全局視窗數據
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('pet_erp_sidebar_collapsed') === 'true';
+  });
+
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('pet_erp_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   // 1. 偵測裝置類型
   const [deviceType, setDeviceType] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
@@ -52,6 +63,19 @@ export const App: React.FC = () => {
     document.documentElement.style.setProperty('--font-scale-factor', factor.toString());
     localStorage.setItem('pet_erp_font_scale', fontScale);
   }, [fontScale]);
+
+  // 3. 註冊 beforeunload 監聽器，防止在背景雲端同步尚未完成時關閉視窗導致資料遺失
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDbSyncing()) {
+        e.preventDefault();
+        e.returnValue = '雲端資料庫同步尚未完成，此時關閉網頁可能會遺失最新修改。確定要離開嗎？';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
   // 啟動時自動從雲端載入並同步本地資料庫，並且解析快捷分享連結
   useEffect(() => {
@@ -180,17 +204,24 @@ export const App: React.FC = () => {
     return <LoginGate onLogin={handleLogin} />;
   }
 
+  // 讀取自訂標題與副標題
+  const systemConfigs = getDb().system_configs || [];
+  const systemTitle = systemConfigs.find(c => c.config_key === 'SYSTEM_TITLE')?.config_value || 'Aether ERP';
+  const systemSubtitle = systemConfigs.find(c => c.config_key === 'SYSTEM_SUBTITLE')?.config_value || '露福簡單商店系統';
+
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-canvas-bg text-text-charcoal antialiased">
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-canvas-bg text-text-charcoal antialiased">
       
       {/* A. 側邊導覽列：僅在電腦版常駐，或在平板版作為抽屜選單 */}
       {deviceType === 'desktop' && (
-        <div className="no-print hidden md:block shrink-0">
+        <div className="no-print hidden md:block shrink-0 h-full">
           <Sidebar 
             activeTab={activeTab} 
             setActiveTab={setActiveTab} 
             onUserChange={handleUserChange} 
             onLogout={handleLogout}
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={toggleSidebarCollapse}
           />
         </div>
       )}
@@ -229,8 +260,8 @@ export const App: React.FC = () => {
               L
             </div>
             <div>
-              <h1 className="text-sm font-black m-0 leading-none">Aether ERP</h1>
-              <span className="text-[9px] text-text-charcoal/50">露福簡單商店系統</span>
+              <h1 className="text-sm font-black m-0 leading-none">{systemTitle}</h1>
+              <span className="text-[9px] text-text-charcoal/50">{systemSubtitle}</span>
             </div>
           </div>
 
@@ -254,7 +285,7 @@ export const App: React.FC = () => {
       )}
 
       {/* C. 右側主工作區 */}
-      <div className={`flex-1 flex flex-col min-w-0 ${deviceType === 'mobile' ? 'pb-20' : ''}`}>
+      <div className={`flex-1 flex flex-col min-w-0 h-full overflow-hidden ${deviceType === 'mobile' ? 'pb-20' : ''}`}>
         
         {/* 電腦版 / 平板版工作區頂部狀態條 (手機版隱藏以節省高度) */}
         {deviceType !== 'mobile' && (
