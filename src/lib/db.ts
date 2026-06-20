@@ -259,21 +259,53 @@ export const getDb = (): ErpDatabase => {
   }
 };
 
+// 為 Promise 加上超時控制，並利用原生 Promise 包裹，避免手機端 (iOS) 的 thenable 掛起與網路阻塞
+const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error('連線超時（10秒無回應），請確認您的行動數據網路是否通暢，或 Supabase 專案已被暫停。')), ms)
+    )
+  ]);
+};
+
+// 雲端同步狀態控制與互斥鎖，防止手機端併發上傳 JSON 造成網路塞車
+let isSyncing = false;
+let hasPendingSync = false;
+let syncTimeoutId: any = null;
+
 // 非同步將本地資料庫同步至 Supabase 雲端
 export const syncDbWithCloud = async (db: ErpDatabase): Promise<void> => {
   const supabase = getSupabase();
-  const config = getSupabaseConfig();
   if (!supabase) return; // 即使沒開自動同步，手動同步也要能上傳
+
+  // 互斥鎖：如果目前已經在同步中，則標記有 pending 任務並直接返回
+  if (isSyncing) {
+    hasPendingSync = true;
+    console.log('⏳ 雲端同步已在進行中，最新資料已排程至稍後自動執行...');
+    return;
+  }
+
+  isSyncing = true;
+  hasPendingSync = false;
 
   try {
     const timestamp = new Date().toISOString();
-    const { error } = await supabase
-      .from('erp_sync_store')
-      .upsert({
-        id: 1,
-        db_json: db,
-        updated_at: timestamp
-      }, { onConflict: 'id' });
+    // 使用 IIFE wrapping 確保回傳真正的原生 Promise
+    const response = await withTimeout(
+      (async () => {
+        return await supabase
+          .from('erp_sync_store')
+          .upsert({
+            id: 1,
+            db_json: db,
+            updated_at: timestamp
+          }, { onConflict: 'id' });
+      })(),
+      10000 // 10 秒超時
+    );
+
+    const error = (response as any).error;
 
     if (error) {
       console.error('Supabase 雲端資料同步失敗：', error);
@@ -286,6 +318,13 @@ export const syncDbWithCloud = async (db: ErpDatabase): Promise<void> => {
   } catch (e) {
     console.error('Supabase 雲端同步連線異常：', e);
     throw e;
+  } finally {
+    isSyncing = false;
+    // 如果在同步進行期間有新的資料庫變動，在結束後自動以最新狀態再同步一次
+    if (hasPendingSync) {
+      console.log('🔄 偵測到同步期間有新資料更新，啟動排程雲端同步...');
+      syncDbWithCloud(getDb()).catch(err => console.error('背景排程雲端同步失敗：', err));
+    }
   }
 };
 
@@ -295,11 +334,20 @@ export const loadDbFromCloud = async (): Promise<ErpDatabase | null> => {
   if (!supabase) return null;
 
   try {
-    const { data, error } = await supabase
-      .from('erp_sync_store')
-      .select('db_json, updated_at')
-      .eq('id', 1)
-      .single();
+    // 使用 IIFE wrapping 與超時防護包裹 select
+    const response = await withTimeout(
+      (async () => {
+        return await supabase
+          .from('erp_sync_store')
+          .select('db_json, updated_at')
+          .eq('id', 1)
+          .single();
+      })(),
+      10000 // 10 秒超時
+    );
+
+    const error = (response as any).error;
+    const data = (response as any).data;
 
     if (error) {
       console.error('自雲端 Supabase 下載資料庫失敗：', error);
@@ -329,12 +377,19 @@ export const loadDbFromCloud = async (): Promise<ErpDatabase | null> => {
 
 // 儲存資料庫
 export const saveDb = (db: ErpDatabase): void => {
+  // 1. 毫秒級寫入本地 localStorage，確保使用者操作時完全不卡頓，立刻反應！
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(db));
   
-  // 非同步觸發雲端同步，避免阻礙 UI
+  // 2. 背景防抖自動同步雲端（延遲 2.5 秒執行，避免連續修改造成手機網路堵塞與無限 pending）
   const config = getSupabaseConfig();
   if (config.autoSync) {
-    syncDbWithCloud(db).catch(err => console.error('背景雲端自動同步失敗：', err));
+    if (syncTimeoutId) {
+      clearTimeout(syncTimeoutId);
+    }
+    syncTimeoutId = setTimeout(() => {
+      console.log('⏳ 偵測到操作停止，開始執行背景防抖雲端同步...');
+      syncDbWithCloud(db).catch(err => console.error('背景雲端自動同步失敗：', err));
+    }, 2500);
   }
 };
 
