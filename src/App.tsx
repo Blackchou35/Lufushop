@@ -68,19 +68,21 @@ export const App: React.FC = () => {
           };
           localStorage.setItem('pet_freeze_dried_erp_supabase_config', JSON.stringify(config));
           
-          // 在重新整理前，立刻強制先進行一次雲端資料下載，確保新帳密能被下載到手機上
+          // 立刻移除網址列參數，防止重複解析與 reload 循環
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
+          // 強制進行一次雲端資料下載，確保新帳密同步到手機上
           const { loadDbFromCloud } = await import('./lib/db');
           const cloudDb = await loadDbFromCloud();
           
           if (cloudDb) {
-            alert('✨ 連線成功！已順利從雲端下載最新帳密與營運資料！\n\n系統將自動重新整理，您現在可以使用最新的帳號登入了！');
+            alert('✨ 連線成功！已順利從雲端下載最新帳密與營運資料！\n\n系統將自動套用，您現在可以使用最新的帳號登入了！');
+            // 直接觸發 React 狀態重新整理
+            setCurrentUser(getCurrentUser());
+            setRefreshKey(prev => prev + 1);
           } else {
             alert('⚠️ 雲端設定儲存成功，但嘗試下載資料失敗！\n\n這代表您的雲端資料庫目前是空的。請先在電腦端設定好，並點選【📤 手動上傳：將本地覆蓋至雲端】把電腦的資料同步上去，手機才能下載得到喔！');
           }
-          
-          // 清除網址列參數，避免重複提示
-          window.history.replaceState({}, document.title, window.location.pathname);
-          window.location.reload();
           return true;
         } catch (err: any) {
           alert(`❌ 解析快速同步連結失敗: ${err.message}`);
@@ -89,21 +91,24 @@ export const App: React.FC = () => {
       return false;
     };
 
-    parseUrlConfig();
-
-    const initCloudDb = async () => {
-      try {
-        const { loadDbFromCloud } = await import('./lib/db');
-        const cloudDb = await loadDbFromCloud();
-        if (cloudDb) {
-          setCurrentUser(getCurrentUser());
-          setRefreshKey(prev => prev + 1);
+    const init = async () => {
+      const hasUrlConfig = await parseUrlConfig();
+      if (!hasUrlConfig) {
+        // 如果沒有同步參數，才跑一般的背景初始下載
+        try {
+          const { loadDbFromCloud } = await import('./lib/db');
+          const cloudDb = await loadDbFromCloud();
+          if (cloudDb) {
+            setCurrentUser(getCurrentUser());
+            setRefreshKey(prev => prev + 1);
+          }
+        } catch (e) {
+          console.error('背景自動載入雲端資料庫失敗：', e);
         }
-      } catch (e) {
-        console.error('背景自動載入雲端資料庫失敗：', e);
       }
     };
-    initCloudDb();
+
+    init();
   }, []);
   
   // 管理登入狀態：若 localStorage 中沒有紀錄，則初始為 null
