@@ -60,6 +60,19 @@ export const SettingsAndAuditing: React.FC = () => {
   // Supabase 雲端同步設定狀態
   const [supabaseConfig, setSupabaseConfig] = useState(() => getSupabaseConfig());
   const [isTestingCloud, setIsTestingCloud] = useState(false);
+  const [syncStats, setSyncStats] = useState(() => ({
+    lastCloud: localStorage.getItem('pet_erp_last_cloud_time') || '尚無紀錄',
+    lastUpload: localStorage.getItem('pet_erp_last_upload_time') || '尚無上傳',
+    lastDownload: localStorage.getItem('pet_erp_last_download_time') || '尚無下載'
+  }));
+
+  const updateSyncStats = () => {
+    setSyncStats({
+      lastCloud: localStorage.getItem('pet_erp_last_cloud_time') || '尚無紀錄',
+      lastUpload: localStorage.getItem('pet_erp_last_upload_time') || '尚無上傳',
+      lastDownload: localStorage.getItem('pet_erp_last_download_time') || '尚無下載'
+    });
+  };
 
   // 自動測試控制台收摺
   const [isTestConsoleOpen, setIsTestConsoleOpen] = useState(false);
@@ -430,6 +443,7 @@ export const SettingsAndAuditing: React.FC = () => {
       saveSupabaseConfig(supabaseConfig);
       setNotification({ type: 'success', message: '已成功儲存 Supabase 雲端設定！' });
       alert('💾 已成功儲存 Supabase 雲端連線設定！');
+      updateSyncStats();
       
       // 如果啟用了自動同步，立刻嘗試將目前的本地資料備份上傳一次，作為雲端資料庫初始化
       if (supabaseConfig.autoSync) {
@@ -437,6 +451,7 @@ export const SettingsAndAuditing: React.FC = () => {
           .then(() => {
             setNotification({ type: 'success', message: '已成功儲存並同步初始資料至雲端！' });
             alert('📤 雲端資料初始化上傳成功！');
+            updateSyncStats();
           })
           .catch(err => {
             setNotification({ type: 'error', message: `儲存成功但雲端同步失敗: ${err.message}` });
@@ -503,6 +518,7 @@ export const SettingsAndAuditing: React.FC = () => {
       await syncDbWithCloud(getDb());
       setNotification({ type: 'success', message: '已手動將本地資料庫完全上傳至 Supabase 雲端！' });
       alert('📤 成功手動將本地資料上傳至 Supabase 雲端資料庫！');
+      updateSyncStats();
     } catch (err: any) {
       setNotification({ type: 'error', message: `上傳雲端失敗: ${err.message}` });
       alert(`❌ 上傳雲端失敗：\n${err.message}`);
@@ -521,6 +537,7 @@ export const SettingsAndAuditing: React.FC = () => {
       if (cloudDb) {
         setNotification({ type: 'success', message: '已成功從 Supabase 下載並還原最新資料庫！系統即將重新載入...' });
         alert('📥 已成功從雲端下載最新資料庫！系統將自動重新載入網頁...');
+        updateSyncStats();
         window.location.reload();
       } else {
         setNotification({ type: 'error', message: '從雲端載入失敗，請確認您的雲端資料庫已有資料且連線金鑰正確。' });
@@ -914,6 +931,34 @@ export const SettingsAndAuditing: React.FC = () => {
         <p className="text-xs text-text-charcoal/70 leading-relaxed">
           輸入您的 Supabase 連線資訊以將這台設備的資料與雲端自動同步，實現電腦與手機/iPad 的跨裝置資料雙向連線。
         </p>
+
+        {/* 雲端同步健康狀態統計 */}
+        <div className="bg-canvas-bg/60 border border-brand-camel/30 rounded-xl p-3 grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs leading-relaxed text-left">
+          <div className="flex flex-col border-r border-brand-camel/15 last:border-0 pr-2">
+            <span className="text-[10px] text-text-charcoal/50 font-bold uppercase">☁️ 雲端最新資料時間</span>
+            <span className="font-bold text-brand-primary mt-0.5">
+              {syncStats.lastCloud !== '尚無紀錄' && syncStats.lastCloud !== '無資料' 
+                ? new Date(syncStats.lastCloud).toLocaleString('zh-TW', {hour12: false}) 
+                : '無資料'}
+            </span>
+          </div>
+          <div className="flex flex-col border-r border-brand-camel/15 last:border-0 pr-2">
+            <span className="text-[10px] text-text-charcoal/50 font-bold uppercase">📤 電腦最後上傳時間</span>
+            <span className="font-bold text-text-charcoal mt-0.5">
+              {syncStats.lastUpload !== '尚無上傳' 
+                ? new Date(syncStats.lastUpload).toLocaleString('zh-TW', {hour12: false}) 
+                : '尚未上傳'}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-text-charcoal/50 font-bold uppercase">📥 本地最後下載時間</span>
+            <span className="font-bold text-text-charcoal mt-0.5">
+              {syncStats.lastDownload !== '尚無下載' 
+                ? new Date(syncStats.lastDownload).toLocaleString('zh-TW', {hour12: false}) 
+                : '尚未下載'}
+            </span>
+          </div>
+        </div>
 
         <form onSubmit={handleSaveSupabaseConfig} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

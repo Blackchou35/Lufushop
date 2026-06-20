@@ -263,7 +263,7 @@ export const getDb = (): ErpDatabase => {
 export const syncDbWithCloud = async (db: ErpDatabase): Promise<void> => {
   const supabase = getSupabase();
   const config = getSupabaseConfig();
-  if (!supabase || !config.autoSync) return;
+  if (!supabase) return; // 即使沒開自動同步，手動同步也要能上傳
 
   try {
     const timestamp = new Date().toISOString();
@@ -277,19 +277,22 @@ export const syncDbWithCloud = async (db: ErpDatabase): Promise<void> => {
 
     if (error) {
       console.error('Supabase 雲端資料同步失敗：', error);
+      throw error;
     } else {
       console.log('資料已成功即時同步至雲端 Supabase 資料表。時間：', timestamp);
+      localStorage.setItem('pet_erp_last_upload_time', timestamp);
+      localStorage.setItem('pet_erp_last_cloud_time', timestamp);
     }
   } catch (e) {
     console.error('Supabase 雲端同步連線異常：', e);
+    throw e;
   }
 };
 
 // 從 Supabase 下載最新雲端資料庫並覆蓋本地
 export const loadDbFromCloud = async (): Promise<ErpDatabase | null> => {
   const supabase = getSupabase();
-  const config = getSupabaseConfig();
-  if (!supabase || !config.autoSync) return null;
+  if (!supabase) return null;
 
   try {
     const { data, error } = await supabase
@@ -300,7 +303,7 @@ export const loadDbFromCloud = async (): Promise<ErpDatabase | null> => {
 
     if (error) {
       console.error('自雲端 Supabase 下載資料庫失敗：', error);
-      return null;
+      throw error;
     }
 
     if (data && data.db_json) {
@@ -310,11 +313,16 @@ export const loadDbFromCloud = async (): Promise<ErpDatabase | null> => {
       if (hasAllKeys) {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(parsedDb));
         console.log('已自動從雲端 Supabase 資料庫更新本地資料，最後同步時間：', data.updated_at);
+        localStorage.setItem('pet_erp_last_download_time', new Date().toISOString());
+        if (data.updated_at) {
+          localStorage.setItem('pet_erp_last_cloud_time', data.updated_at);
+        }
         return parsedDb;
       }
     }
   } catch (e) {
     console.error('自雲端 Supabase 連線下載異常：', e);
+    throw e;
   }
   return null;
 };
