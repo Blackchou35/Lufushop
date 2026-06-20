@@ -30,25 +30,26 @@
 /* 絕對視覺禁令：禁止深色模式，全站預設明亮暖色系 */
 :root {
   color-scheme: light;
+  --font-scale-factor: 1.0;
 }
 
 /* 響應式根字體大小控制，配合各種解析度自動調節整體 UI 大小 */
 /* 手機/小螢幕端：基準字體放大為 20px */
 html {
-  font-size: 20px; 
+  font-size: calc(20px * var(--font-scale-factor, 1.0)); 
 }
 
 /* iPad/平板端：基準字體放大為 18px */
 @media (min-width: 768px) and (max-width: 1024px) {
   html {
-    font-size: 18px; 
+    font-size: calc(18px * var(--font-scale-factor, 1.0)); 
   }
 }
 
 /* 電腦/大螢幕端：基準字體設定為 16px */
 @media (min-width: 1024px) {
   html {
-    font-size: 16px; 
+    font-size: calc(16px * var(--font-scale-factor, 1.0)); 
   }
 }
 
