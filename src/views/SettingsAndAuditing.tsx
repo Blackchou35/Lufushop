@@ -62,6 +62,33 @@ export const SettingsAndAuditing: React.FC = () => {
   // Supabase 雲端同步設定狀態
   const [supabaseConfig, setSupabaseConfig] = useState(() => getSupabaseConfig());
   const [isTestingCloud, setIsTestingCloud] = useState(false);
+  const [quickSyncLinkInput, setQuickSyncLinkInput] = useState('');
+
+  const handleQuickSyncLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.trim();
+    setQuickSyncLinkInput(val);
+    if (!val) return;
+
+    try {
+      if (val.includes('sb_url=') && val.includes('sb_key=')) {
+        const urlObj = new URL(val);
+        const url = urlObj.searchParams.get('sb_url');
+        const key = urlObj.searchParams.get('sb_key');
+        if (url && key) {
+          setSupabaseConfig({
+            url: decodeURIComponent(url),
+            anonKey: decodeURIComponent(key),
+            autoSync: true
+          });
+          setQuickSyncLinkInput('');
+          setNotification({ type: 'success', message: '⚡ 一鍵成功解析快速同步連結！請點選下方儲存並連接。' });
+          alert('⚡ 一鍵成功解析連線設定！\n\n已為您自動填入 Supabase Project URL 與 Anon Key 並勾選自動同步。請直接點選下方的「💾 儲存並連接雲端」按鈕完成設定！');
+        }
+      }
+    } catch (err) {
+      // 靜默
+    }
+  };
   const [syncStats, setSyncStats] = useState(() => ({
     lastCloud: localStorage.getItem('pet_erp_last_cloud_time') || '尚無紀錄',
     lastUpload: localStorage.getItem('pet_erp_last_upload_time') || '尚無上傳',
@@ -996,6 +1023,21 @@ export const SettingsAndAuditing: React.FC = () => {
         </div>
 
         <form onSubmit={handleSaveSupabaseConfig} className="space-y-4">
+          {/* PWA 專屬：一鍵貼上連結設定區 */}
+          <div className="bg-brand-primary/5 border border-brand-primary/20 rounded-xl p-3.5 space-y-1.5 text-xs text-left">
+            <label className="block font-black text-brand-primary">⚡ PWA 一鍵同步（適用於手機/iPad 新裝 PWA 快速設定）</label>
+            <p className="text-[10px] text-text-charcoal/60 leading-normal">
+              如果您是新安裝 PWA App，請在 Safari 網頁端點選「🔗 複製快速同步連結」或直接複製帶有金鑰的網址，然後在此貼上整串連結，系統會自動為您填寫下方欄位：
+            </p>
+            <input
+              type="text"
+              placeholder="請在此貼上快速同步連結（如：http://.../?sb_url=...&sb_key=...）"
+              value={quickSyncLinkInput}
+              onChange={handleQuickSyncLinkChange}
+              className="w-full bg-canvas-bg border border-brand-primary/45 rounded-lg px-2.5 py-2 text-xs text-text-charcoal placeholder:text-text-charcoal/40"
+            />
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block font-semibold mb-1 text-text-charcoal/70">1. Supabase Project URL</label>
