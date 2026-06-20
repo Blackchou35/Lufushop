@@ -1,5 +1,5 @@
 // 寵物凍乾與寄賣 ERP - 系統進入點主架構元件
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { LoginGate } from './components/LoginGate';
 import { Dashboard } from './views/Dashboard';
