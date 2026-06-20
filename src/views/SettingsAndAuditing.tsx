@@ -454,33 +454,47 @@ export const SettingsAndAuditing: React.FC = () => {
       alert('⚠️ 請先填寫完整的 Supabase URL 與 Anon Key 才能複製分享連結！');
       return;
     }
-    try {
-      const shareUrl = `${window.location.origin}${window.location.pathname}?sb_url=${encodeURIComponent(supabaseConfig.url)}&sb_key=${encodeURIComponent(supabaseConfig.anonKey)}`;
-      
-      // 複製到剪貼簿
-      navigator.clipboard.writeText(shareUrl)
-        .then(() => {
-          alert('🔗 已成功複製快速同步連結！\n\n您可以將此連結透過 LINE / WeChat 或 AirDrop 傳送到手機或 iPad 開啟，即可一秒完成設定！');
-        })
-        .catch(() => {
-          // 備用複製方式，如果 navigator.clipboard 被阻擋
-          const textArea = document.createElement("textarea");
-          textArea.value = shareUrl;
-          textArea.style.position = "fixed";
-          document.body.appendChild(textArea);
-          textArea.focus();
-          textArea.select();
-          try {
-            document.execCommand('copy');
-            alert('🔗 已成功複製快速同步連結 (備用通道)！\n\n您可以將此連結透過 LINE / WeChat 或 AirDrop 傳送到手機或 iPad 開啟，即可一秒完成設定！');
-          } catch (err) {
-            alert('複製連結失敗，請手動複製網址列。');
-          }
-          document.body.removeChild(textArea);
-        });
-    } catch (e: any) {
-      alert(`複製失敗: ${e.message}`);
+    const shareUrl = `${window.location.origin}${window.location.pathname}?sb_url=${encodeURIComponent(supabaseConfig.url)}&sb_key=${encodeURIComponent(supabaseConfig.anonKey)}`;
+    
+    // 優先使用 Web Share API 彈出原生分享 (包含 AirDrop)
+    if (navigator.share) {
+      navigator.share({
+        title: '寵物凍乾 ERP 雲端同步設定',
+        text: '點此連結即可在 iPhone/iPad 上一秒自動完成 Supabase 雲端資料庫同步設定！',
+        url: shareUrl
+      })
+      .then(() => console.log('分享成功'))
+      .catch(err => {
+        // 使用者取消分享不報錯
+        if (err.name !== 'AbortError') {
+          copyToClipboardFallback(shareUrl);
+        }
+      });
+    } else {
+      copyToClipboardFallback(shareUrl);
     }
+  };
+
+  const copyToClipboardFallback = (text: string) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        alert('🔗 已成功複製快速同步連結！\n\n您可以將此連結透過 LINE / WeChat 或 AirDrop 傳送到手機或 iPad 開啟，即可一秒完成設定！');
+      })
+      .catch(() => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          alert('🔗 已成功複製快速同步連結 (備用通道)！\n\n您可以將此連結透過 LINE / WeChat 或 AirDrop 傳送到手機或 iPad 開啟，即可一秒完成設定！');
+        } catch (err) {
+          alert('複製連結失敗，請手動複製網址列。');
+        }
+        document.body.removeChild(textArea);
+      });
   };
 
   const handleManualUploadToCloud = async () => {
