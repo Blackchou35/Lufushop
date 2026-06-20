@@ -29,7 +29,17 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Stale-while-revalidate 策略
+  const url = new URL(e.request.url);
+  
+  // 僅快取同源的 GET 請求靜態資源，完全排除 Supabase API 與任何跨域請求，避免網路卡死或緩存過期資料
+  if (
+    e.request.method !== 'GET' || 
+    !e.request.url.startsWith(self.location.origin) ||
+    url.pathname.includes('/rest/v1/')
+  ) {
+    return; // 不進行響應攔截，交由瀏覽器原生網路處理
+  }
+
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
       if (cachedResponse) {
