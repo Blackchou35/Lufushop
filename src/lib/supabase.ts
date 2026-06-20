@@ -37,7 +37,14 @@ export const getSupabase = (): SupabaseClient | null => {
   const config = getSupabaseConfig();
   if (config.url && config.anonKey) {
     try {
-      supabaseInstance = createClient(config.url, config.anonKey);
+      // 防呆網址格式化：去除尾部的斜線 '/' 與多餘的 '/rest/v1' 路徑
+      let cleanUrl = config.url.trim();
+      cleanUrl = cleanUrl.replace(/\/rest\/v1\/?$/, '');
+      if (cleanUrl.endsWith('/')) {
+        cleanUrl = cleanUrl.slice(0, -1);
+      }
+
+      supabaseInstance = createClient(cleanUrl, config.anonKey);
       return supabaseInstance;
     } catch (e) {
       console.error('Supabase 初始化失敗', e);
